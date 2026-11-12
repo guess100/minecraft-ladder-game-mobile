@@ -21,12 +21,13 @@
   let final = null;          // 최종 발표 {order, revealed}
   let selIdx = 0;            // 메뉴 선택 커서
   let netStatus = 'connecting';
+  let netDetail = null;     // {peer, relay} 각 연결 길 상태
   const conns = new Map();   // connId -> cid
   const online = new Map();  // cid -> connId
 
   // ---------------- 네트워크 ----------------
   const net = Net.createHost(S.code, {
-    onStatus(s) { netStatus = s; renderTop(); },
+    onStatus(s, d) { netStatus = s; netDetail = d || null; renderTop(); },
     onConnect() { },
     onClose(id) {
       const cid = conns.get(id);
@@ -308,6 +309,11 @@
     const ns = $('#netstat');
     const txt = { online: `● 접속 ${nOnline}대`, connecting: '○ 연결 준비 중…', reconnecting: '○ 다시 연결 중…', 'waiting-id': '○ 방 다시 여는 중…' }[netStatus] || `⚠ 연결 오류 (${netStatus})`;
     ns.textContent = txt;
+    if (netDetail) {
+      const mark = (v) => (v === 'online' ? '✓' : '✕');
+      ns.title = `직접 연결 ${mark(netDetail.peer)} · 중계 연결 ${mark(netDetail.relay)}`;
+      ns.textContent += `  (직접${mark(netDetail.peer)} 중계${mark(netDetail.relay)})`;
+    }
     ns.className = 'netstat ' + (netStatus === 'online' ? 'ok' : 'warn');
     $('#mini-code').textContent = S.code;
     $('#snd').textContent = Sfx.on ? '🔊' : '🔇';
