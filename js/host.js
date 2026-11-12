@@ -325,7 +325,8 @@
     $('#phase').textContent = badge || '';
     const nOnline = [...online.keys()].filter((c) => S.members[c]).length;
     const ns = $('#netstat');
-    const txt = { online: `● 접속 ${nOnline}대`, connecting: '○ 연결 준비 중…', reconnecting: '○ 다시 연결 중…', 'waiting-id': '○ 방 다시 여는 중…' }[netStatus] || `⚠ 연결 오류 (${netStatus})`;
+    const txt = { online: `● 접속 ${nOnline}대`, connecting: '○ 연결 준비 중…', reconnecting: '○ 다시 연결 중…', 'waiting-id': '○ 방 다시 여는 중…' }[netStatus]
+      || (netStatus === 'error:fb-permission' ? '⚠ Firebase 권한 오류 — 보안 규칙을 확인하세요' : `⚠ 연결 오류 (${netStatus})`);
     ns.textContent = txt;
     if (netDetail && netDetail.fb) {
       ns.title = 'Firebase 연결';
