@@ -3,821 +3,104 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>블록 사다리 탐험</title>
+  <title>팀 대항 오락실 · 송년회 레크리에이션</title>
+  <meta name="description" content="폰으로 QR 찍고 바로 하는 팀 대항 미니게임 24종 + 경품 추첨 10종. 설치 없이 브라우저만 있으면 OK." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+  <link rel="stylesheet" href="css/base.css" />
   <style>
-    :root {
-      --bg: #101712;
-      --panel: #1c251d;
-      --panel-2: #243126;
-      --line: #48654f;
-      --text: #eef7e8;
-      --muted: #bfd2ba;
-      --grass: #69b84d;
-      --dirt: #7c4f2d;
-      --stone: #6f7778;
-      --gold: #f6c74a;
-      --diamond: #68e9ff;
-      --lava: #ff7a2f;
-      --danger: #ff6363;
-      --shadow: rgba(0,0,0,0.28);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Trebuchet MS", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top, rgba(104, 233, 255, 0.14), transparent 24%),
-        linear-gradient(180deg, #162118 0%, #0f1410 50%, #0a0d0a 100%);
-    }
-
-    .page {
-      width: min(1180px, calc(100% - 28px));
-      margin: 22px auto 32px;
-      display: grid;
-      gap: 18px;
-    }
-
-    .hero, .panel {
-      background: linear-gradient(180deg, rgba(36, 49, 38, 0.98), rgba(24, 32, 25, 0.98));
-      border: 4px solid #0d120d;
-      box-shadow: 0 10px 24px var(--shadow), inset 0 0 0 2px rgba(255,255,255,0.06);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
-    .hero {
-      display: grid;
-      grid-template-columns: 1.3fr 0.9fr;
-      min-height: 220px;
-    }
-
-    .hero-copy {
-      padding: 22px 24px 18px;
-      position: relative;
-      background:
-        linear-gradient(180deg, rgba(108,184,77,0.17), transparent 22%),
-        linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.15));
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
-      background: rgba(0,0,0,0.22);
-      border: 2px solid rgba(255,255,255,0.1);
-      border-radius: 999px;
-      color: var(--diamond);
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      margin-bottom: 14px;
-    }
-
-    h1 {
-      margin: 0 0 10px;
-      font-size: clamp(28px, 4vw, 44px);
-      line-height: 1.04;
-    }
-
-    .hero p {
-      margin: 0;
-      max-width: 60ch;
-      color: var(--muted);
-      line-height: 1.6;
-      font-size: 16px;
-    }
-
-    .hero-art {
-      position: relative;
-      background:
-        linear-gradient(180deg, rgba(83,113,79,0.35), transparent 24%),
-        linear-gradient(180deg, #2d3d2f 0 18%, #4f7a42 18% 32%, #7c4f2d 32% 46%, #565c5d 46% 100%);
-      display: grid;
-      place-items: center;
-      padding: 18px;
-    }
-
-    .pixel-scene {
-      width: min(360px, 100%);
-      aspect-ratio: 1.15;
-      position: relative;
-      filter: drop-shadow(0 14px 18px rgba(0,0,0,0.32));
-    }
-
-    .sun, .tree, .avatar, .ore {
-      position: absolute;
-      image-rendering: pixelated;
-    }
-
-    .sun {
-      width: 52px; height: 52px; right: 8%; top: 8%;
-      background: linear-gradient(180deg, #ffe58a, #f6c74a);
-      box-shadow: 0 0 0 6px rgba(246,199,74,0.18);
-    }
-
-    .tree {
-      left: 10%; bottom: 28%; width: 78px; height: 118px;
-      background:
-        linear-gradient(180deg, transparent 0 28%, #66401f 28% 100%),
-        linear-gradient(180deg, #2e5f28 0 20%, #3b7d31 20% 60%, #25511e 60% 100%);
-      clip-path: polygon(30% 0, 70% 0, 70% 26%, 100% 26%, 100% 58%, 72% 58%, 72% 100%, 28% 100%, 28% 58%, 0 58%, 0 26%, 30% 26%);
-    }
-
-    .avatar {
-      left: 38%; bottom: 18%; width: 124px; height: 154px;
-      background:
-        linear-gradient(180deg, #e3b78b 0 17%, #5b3826 17% 26%, #2fb1bf 26% 58%, #4d3a8f 58% 100%);
-      clip-path: polygon(18% 0, 82% 0, 82% 16%, 100% 16%, 100% 57%, 82% 57%, 82% 100%, 59% 100%, 59% 72%, 41% 72%, 41% 100%, 18% 100%, 18% 57%, 0 57%, 0 16%, 18% 16%);
-    }
-
-    .avatar::before, .avatar::after {
-      content: "";
-      position: absolute;
-      width: 14px; height: 14px; top: 26px;
-      background: #1d1d1d;
-      box-shadow: 0 0 0 4px rgba(255,255,255,0.08);
-    }
-
-    .avatar::before { left: 28px; }
-    .avatar::after { right: 28px; }
-
-    .ore {
-      right: 12%; bottom: 18%; width: 92px; height: 92px;
-      background:
-        linear-gradient(180deg, #81888a 0 100%);
-      clip-path: polygon(25% 0, 75% 0, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0 75%, 0 25%);
-    }
-
-    .ore::before, .ore::after {
-      content: "";
-      position: absolute;
-      background: var(--diamond);
-      width: 22px; height: 18px;
-      box-shadow: 24px 12px 0 0 var(--diamond), 5px 38px 0 0 var(--diamond);
-      left: 18px; top: 18px;
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 18px;
-    }
-
-    .panel-header {
-      padding: 16px 18px 0;
-    }
-
-    .panel-header h2 {
-      margin: 0;
-      font-size: 20px;
-    }
-
-    .panel-header p {
-      margin: 8px 0 0;
-      color: var(--muted);
-      line-height: 1.55;
-      font-size: 14px;
-    }
-
-    .controls {
-      padding: 16px 16px 18px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .card {
-      background: rgba(0,0,0,0.18);
-      border: 2px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 12px;
-    }
-
-    .card h3 {
-      margin: 0 0 10px;
-      font-size: 14px;
-      color: var(--diamond);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    label {
-      display: grid;
-      gap: 6px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    input, select, button, textarea {
-      font: inherit;
-    }
-
-    input, select {
-      width: 100%;
-      border-radius: 10px;
-      border: 2px solid rgba(255,255,255,0.08);
-      background: #111712;
-      color: var(--text);
-      padding: 10px 11px;
-      outline: none;
-    }
-
-    input:focus, select:focus {
-      border-color: var(--diamond);
-      box-shadow: 0 0 0 3px rgba(104,233,255,0.16);
-    }
-
-    .button-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    button {
-      border: 0;
-      border-radius: 12px;
-      padding: 12px 12px;
-      cursor: pointer;
-      font-weight: 800;
-      color: #0d120d;
-      background: linear-gradient(180deg, #f6d16b, #d7a932);
-      box-shadow: inset 0 -3px 0 rgba(0,0,0,0.22);
-      transition: transform 0.12s ease, filter 0.12s ease;
-      min-height: 46px;
-    }
-
-    button.secondary {
-      background: linear-gradient(180deg, #79d663, #4d9d39);
-    }
-
-    button.ghost {
-      background: linear-gradient(180deg, #85dff2, #4ea0bc);
-    }
-
-    button.warn {
-      background: linear-gradient(180deg, #ff9b6e, #f07034);
-    }
-
-    button:hover { transform: translateY(-1px); filter: brightness(1.03); }
-    button:active { transform: translateY(1px); }
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-      filter: grayscale(0.1);
-      transform: none;
-    }
-
-    .help {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.5;
-      margin-top: 2px;
-    }
-
-    .result-box {
-      display: grid;
-      gap: 8px;
-      background: linear-gradient(180deg, rgba(104,233,255,0.11), rgba(255,255,255,0.03));
-      border: 2px solid rgba(104,233,255,0.18);
-      border-radius: 12px;
-      padding: 12px;
-    }
-
-    .result-box strong {
-      font-size: 15px;
-      color: #fff8d8;
-    }
-
-    .board-wrap {
-      padding: 16px;
-    }
-
-    .board-shell {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.04), transparent 12%),
-        linear-gradient(180deg, #2b382c 0, #1a211b 100%);
-      border-radius: 16px;
-      border: 3px solid rgba(255,255,255,0.08);
-      padding: 12px;
-    }
-
-    canvas {
-      width: 100%;
-      display: block;
-      border-radius: 12px;
-      background:
-        linear-gradient(180deg, #6bbd51 0 15%, #7d5534 15% 22%, #666e70 22% 100%);
-    }
-
-    .legend {
-      margin-top: 12px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-
-    .legend-item {
-      border-radius: 12px;
-      background: rgba(0,0,0,0.18);
-      border: 2px solid rgba(255,255,255,0.08);
-      padding: 10px;
-      text-align: center;
-      min-height: 92px;
-      display: grid;
-      align-content: center;
-      gap: 6px;
-    }
-
-    .token {
-      width: 34px;
-      height: 34px;
-      margin: 0 auto;
-      border-radius: 8px;
-      border: 2px solid rgba(255,255,255,0.26);
-      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2);
-    }
-
-    .legend small {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .footer-note {
-      color: var(--muted);
-      font-size: 12px;
-      text-align: center;
-      margin-top: 4px;
-    }
-
-    @media (max-width: 980px) {
-      .hero, .layout { grid-template-columns: 1fr; }
-      .legend { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (max-width: 640px) {
-      .page { width: min(100% - 14px, 100%); margin-top: 12px; }
-      .hero-copy { padding: 18px; }
-      .button-row, .grid-2 { grid-template-columns: 1fr; }
-      .legend { grid-template-columns: 1fr; }
-      h1 { font-size: 28px; }
-    }
+    body { overflow-x: hidden; }
+    .page { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 60px; }
+    .hero { text-align: center; padding: 40px 0 28px; }
+    .badge { display: inline-block; background: rgba(255, 201, 60, .14); color: var(--accent); font-weight: 800; border-radius: 99px; padding: 6px 14px; font-size: 14px; }
+    .hero h1 { font-size: clamp(32px, 6vw, 60px); line-height: 1.15; margin: 16px 0 12px; letter-spacing: -.02em; }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero p { color: var(--muted); font-size: clamp(15px, 2vw, 19px); margin: 0; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; }
+    .card { display: flex; flex-direction: column; gap: 8px; background: var(--panel); border: 1.5px solid var(--line); border-radius: 22px; padding: 22px; text-decoration: none; color: inherit; transition: transform .15s, border-color .15s; }
+    a.card:hover { transform: translateY(-4px); border-color: var(--accent); }
+    .card .ic { font-size: 44px; }
+    .card h2 { margin: 0; font-size: 22px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+    .card .go { margin-top: auto; font-weight: 800; color: var(--accent); padding-top: 8px; }
+    .card.main { background: linear-gradient(160deg, #3a2f62, var(--panel)); border-color: #5b4c94; }
+    .join-row { display: flex; gap: 8px; margin-top: auto; }
+    .join-row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .2em; font-weight: 800; font-size: 18px; text-align: center; }
+    .join-row button { border: 0; border-radius: 12px; background: var(--accent); color: #1a1426; font-weight: 800; padding: 0 16px; }
+    h3.sec { font-size: 24px; margin: 48px 0 16px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .step { background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+    .step b { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #1a1426; margin-bottom: 8px; }
+    .step h4 { margin: 0 0 6px; font-size: 17px; }
+    .step p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .games { display: flex; flex-wrap: wrap; gap: 8px; }
+    .games span { background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 7px 12px; font-weight: 700; font-size: 14px; }
+    .tips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; color: var(--muted); font-size: 14px; line-height: 1.6; padding-left: 18px; margin: 0; }
+    .tips b { color: var(--text); }
+    .foot { margin-top: 48px; color: var(--muted); font-size: 13px; text-align: center; }
+    .foot a { color: var(--muted); }
+    @media (max-width: 760px) { .cards, .steps, .tips { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="page">
     <section class="hero">
-      <div class="hero-copy">
-        <div class="badge">⛏️ 블록 월드 사다리 타기</div>
-        <h1>광산 속 운명을 정하는<br />마인크래프트풍 사다리 게임</h1>
-        <p>
-          플레이어 이름과 보상을 적고 시작하면, 블록 캐릭터가 사다리를 따라 내려가며 결과를 알려줘요.
-          원작 UI를 복제하지 않고, 픽셀/복셀 감성만 살린 오리지널 테마로 만들었습니다.
-        </p>
-      </div>
-      <div class="hero-art" aria-hidden="true">
-        <div class="pixel-scene">
-          <div class="sun"></div>
-          <div class="tree"></div>
-          <div class="avatar"></div>
-          <div class="ore"></div>
-        </div>
+      <span class="badge">🎄 송년회 · 신년회 · 워크숍 레크리에이션</span>
+      <h1>폰으로 QR 찍으면<br /><em>팀 대항 오락실</em> 시작!</h1>
+      <p>미니게임 24종 · 점수·순위·시상은 화면이 알아서 · 경품 추첨 10종까지</p>
+    </section>
+
+    <section class="cards">
+      <a class="card main" href="host.html">
+        <div class="ic">🖥️</div>
+        <h2>게임 진행하기</h2>
+        <p>노트북을 TV·빔프로젝터에 연결하고 여기서 시작하세요. 큰 화면에 참가 QR이 바로 떠요.</p>
+        <div class="go">진행 화면 열기 →</div>
+      </a>
+      <a class="card" href="draw.html">
+        <div class="ic">🎁</div>
+        <h2>경품 추첨</h2>
+        <p>이름·번호만 넣으면 돌림판, 사다리, 오리 경주, 슬롯머신 등 10가지 연출로 당첨자를 뽑아요.</p>
+        <div class="go">추첨 화면 열기 →</div>
+      </a>
+      <div class="card">
+        <div class="ic">📱</div>
+        <h2>참가하기</h2>
+        <p>QR을 못 찍었다면 큰 화면의 방 코드 5자리를 입력하세요.</p>
+        <form class="join-row" onsubmit="event.preventDefault(); var v=this.code.value.trim().toUpperCase(); if(v) location.href='play.html?r='+encodeURIComponent(v);">
+          <input name="code" maxlength="5" placeholder="코드" autocomplete="off" />
+          <button>입장</button>
+        </form>
       </div>
     </section>
 
-    <section class="layout">
-      <aside class="panel">
-        <div class="panel-header">
-          <h2>게임 설정</h2>
-          <p>이름과 보상은 바로 수정 가능합니다. 시작 전 섞기 버튼으로 랜덤성을 조금 더 줄 수 있어요.</p>
-        </div>
-        <div class="controls">
-          <div class="card">
-            <h3>참가자</h3>
-            <div class="grid-2">
-              <label>플레이어 1<input id="p0" value="스티브" maxlength="12" /></label>
-              <label>플레이어 2<input id="p1" value="알렉스" maxlength="12" /></label>
-              <label>플레이어 3<input id="p2" value="주민" maxlength="12" /></label>
-              <label>플레이어 4<input id="p3" value="탐험가" maxlength="12" /></label>
-            </div>
-          </div>
+    <h3 class="sec">진행은 딱 3단계</h3>
+    <div class="steps">
+      <div class="step"><b>1</b><h4>노트북에서 [게임 진행하기]</h4><p>설치 없이 크롬으로 열면 끝. 큰 화면에 참가 QR과 방 코드가 떠요.</p></div>
+      <div class="step"><b>2</b><h4>팀 대표가 폰으로 QR 찍기</h4><p>앱 설치·회원가입 없이 팀 이름만 입력. 팀원 폰은 같은 팀을 고르면 합류(팀 점수는 평균).</p></div>
+      <div class="step"><b>3</b><h4>게임 고르고 스페이스바</h4><p>안내 → 3·2·1 → 실시간 막대 중계 → 시상대까지 자동. 마지막엔 꼴찌부터 최종 순위 발표!</p></div>
+    </div>
 
-          <div class="card">
-            <h3>보상</h3>
-            <div class="grid-2">
-              <label>결과 1<input id="r0" value="다이아몬드" maxlength="12" /></label>
-              <label>결과 2<input id="r1" value="철 곡괭이" maxlength="12" /></label>
-              <label>결과 3<input id="r2" value="황금 사과" maxlength="12" /></label>
-              <label>결과 4<input id="r3" value="용암 청소" maxlength="12" /></label>
-            </div>
-          </div>
+    <h3 class="sec">팀 대항 미니게임 24종</h3>
+    <div class="games" id="games"></div>
 
-          <div class="card">
-            <h3>플레이</h3>
-            <label>누가 도전할까요?
-              <select id="playerSelect"></select>
-            </label>
-            <div class="button-row" style="margin-top: 10px;">
-              <button id="shuffleBtn" class="secondary">지형 섞기</button>
-              <button id="drawBtn">사다리 시작</button>
-            </div>
-            <div class="button-row" style="margin-top: 10px;">
-              <button id="autoBtn" class="ghost">전원 결과 보기</button>
-              <button id="resetBtn" class="warn">초기화</button>
-            </div>
-            <div class="help">팁: 이름/보상을 바꾸면 즉시 보드와 결과 카드에 반영됩니다.</div>
-          </div>
+    <h3 class="sec">행사 전 체크리스트</h3>
+    <ul class="tips">
+      <li><b>스페이스바 하나로 진행</b> — PPT 리모컨(다음 페이지 키)도 돼요. Q: 참가 QR 크게, F: 전체 화면</li>
+      <li><b>팀마다 폰 1대 추천</b> — 그 폰으로 팀원이 돌아가며 출전하면 응원 열기가 최고예요. 최대 16팀.</li>
+      <li><b>노트북은 안정적인 인터넷</b> — 폰은 LTE·5G로도 접속돼요. 폰과 노트북이 서로 직접 연결(WebRTC)돼서 별도 서버가 필요 없어요.</li>
+      <li><b>노트북을 새로고침해도 점수 유지</b> — 팀·점수는 이 브라우저에 자동 저장돼요. 폰은 자동으로 다시 연결돼요.</li>
+      <li><b>리허설</b> — 진행 화면의 [팀 관리·설정]에서 가상 팀을 추가하면 혼자서도 전체 흐름을 미리 볼 수 있어요.</li>
+      <li><b>실수해도 OK</b> — 직전 게임 결과 취소, 점수 보정(장기자랑·응원상 등) 기능이 있어요.</li>
+    </ul>
 
-          <div class="result-box" id="resultBox">
-            <strong>대기 중...</strong>
-            <span>플레이어를 선택하고 사다리를 시작해보세요.</span>
-          </div>
-        </div>
-      </aside>
-
-      <main class="panel">
-        <div class="panel-header">
-          <h2>광산 사다리 보드</h2>
-          <p>위의 참가자에서 아래 보상으로 이어지는 블록 사다리입니다. 애니메이션 토큰이 실제 경로를 따라 이동합니다.</p>
-        </div>
-        <div class="board-wrap">
-          <div class="board-shell">
-            <canvas id="board" width="860" height="960"></canvas>
-            <div class="legend" id="legend"></div>
-          </div>
-          <div class="footer-note">직접 열기만 하면 작동하는 단일 HTML 파일입니다.</div>
-        </div>
-      </main>
-    </section>
+    <div class="foot">보너스: <a href="ladder.html">🪜 블록 사다리 탐험</a></div>
   </div>
-
+  <script src="js/common.js"></script>
+  <script src="js/games.js"></script>
   <script>
-    const PLAYER_COLORS = ['#68e9ff', '#f6c74a', '#8af06f', '#ff9c6f'];
-    const REWARD_COLORS = ['#4be1ff', '#cfd4d5', '#ffcc4d', '#ff6d4d'];
-    const board = document.getElementById('board');
-    const ctx = board.getContext('2d');
-    const playerInputs = Array.from({ length: 4 }, (_, i) => document.getElementById(`p${i}`));
-    const rewardInputs = Array.from({ length: 4 }, (_, i) => document.getElementById(`r${i}`));
-    const playerSelect = document.getElementById('playerSelect');
-    const resultBox = document.getElementById('resultBox');
-    const legend = document.getElementById('legend');
-    const shuffleBtn = document.getElementById('shuffleBtn');
-    const drawBtn = document.getElementById('drawBtn');
-    const autoBtn = document.getElementById('autoBtn');
-    const resetBtn = document.getElementById('resetBtn');
-
-    const state = {
-      players: ['스티브', '알렉스', '주민', '탐험가'],
-      rewards: ['다이아몬드', '철 곡괭이', '황금 사과', '용암 청소'],
-      lanesX: [],
-      horizontalMap: new Map(),
-      segments: [],
-      currentPath: null,
-      tokenIndex: 0,
-      animating: false,
-      discovered: new Array(4).fill(null),
-      autoMode: false,
-      autoQueue: [],
-    };
-
-    function randomInt(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-    function updateNamesFromInputs() {
-      state.players = playerInputs.map((input, i) => input.value.trim() || `플레이어 ${i + 1}`);
-      state.rewards = rewardInputs.map((input, i) => input.value.trim() || `보상 ${i + 1}`);
-      renderSelect();
-      renderLegend();
-      renderBoard();
-    }
-
-    function renderSelect() {
-      const prev = playerSelect.value;
-      playerSelect.innerHTML = '';
-      state.players.forEach((name, i) => {
-        const option = document.createElement('option');
-        option.value = String(i);
-        option.textContent = `${i + 1}. ${name}`;
-        playerSelect.appendChild(option);
-      });
-      playerSelect.value = prev || '0';
-    }
-
-    function renderLegend() {
-      legend.innerHTML = '';
-      state.players.forEach((name, i) => {
-        const discovered = state.discovered[i];
-        const el = document.createElement('div');
-        el.className = 'legend-item';
-        el.innerHTML = `
-          <div class="token" style="background:${PLAYER_COLORS[i]}"></div>
-          <strong>${name}</strong>
-          <small>${discovered == null ? '결과 미공개' : '→ ' + state.rewards[discovered]}</small>
-        `;
-        legend.appendChild(el);
-      });
-    }
-
-    function buildBoard() {
-      const w = board.width;
-      const topY = 120;
-      const bottomY = board.height - 160;
-      const left = 120;
-      const spacing = (w - 240) / 3;
-      state.lanesX = Array.from({ length: 4 }, (_, i) => left + spacing * i);
-      state.horizontalMap = new Map();
-      state.segments = [];
-      const rows = 9;
-      const usedPairsByRow = new Set();
-
-      for (let r = 0; r < rows; r++) {
-        const y = topY + ((bottomY - topY) / (rows + 1)) * (r + 1);
-        const choices = [0, 1, 2].filter((lane) => !usedPairsByRow.has(`${r}:${lane}`));
-        const count = Math.random() < 0.45 ? 2 : 1;
-        let selected = [];
-        while (selected.length < count && choices.length) {
-          const idx = randomInt(0, choices.length - 1);
-          const lane = choices.splice(idx, 1)[0];
-          if (selected.some((v) => Math.abs(v - lane) === 1)) continue;
-          selected.push(lane);
-        }
-        selected.forEach((lane) => {
-          const a = lane;
-          const b = lane + 1;
-          state.horizontalMap.set(`${a}-${y}`, b);
-          state.horizontalMap.set(`${b}-${y}`, a);
-          state.segments.push({ a, b, y });
-        });
-      }
-
-      state.discovered = new Array(4).fill(null);
-      state.currentPath = null;
-      state.tokenIndex = 0;
-      state.animating = false;
-      state.autoMode = false;
-      state.autoQueue = [];
-      updateButtons();
-    }
-
-    function tracePath(startLane) {
-      const topY = 120;
-      const bottomY = board.height - 160;
-      const sortedYs = [...new Set(state.segments.map((seg) => seg.y))].sort((a, b) => a - b);
-      let lane = startLane;
-      let x = state.lanesX[lane];
-      let y = topY;
-      const points = [{ x, y }];
-
-      for (const rowY of sortedYs) {
-        points.push({ x, y: rowY });
-        const nextLane = state.horizontalMap.get(`${lane}-${rowY}`);
-        if (nextLane != null) {
-          lane = nextLane;
-          x = state.lanesX[lane];
-          points.push({ x, y: rowY });
-        }
-        y = rowY;
-      }
-
-      points.push({ x, y: bottomY });
-      return { points, endLane: lane };
-    }
-
-    function drawPixelRect(x, y, w, h, fill, stroke = 'rgba(0,0,0,0.2)') {
-      ctx.fillStyle = fill;
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, w, h);
-    }
-
-    function drawBlockBackground() {
-      const block = 48;
-      for (let y = 0; y < board.height; y += block) {
-        for (let x = 0; x < board.width; x += block) {
-          let color = '#697173';
-          if (y < 120) color = '#79c75f';
-          else if (y < 190) color = '#825533';
-          else {
-            const variant = (x / block + y / block) % 4;
-            color = ['#5f6667', '#6b7374', '#757e7f', '#666e70'][variant];
-          }
-          drawPixelRect(x, y, block, block, color, 'rgba(255,255,255,0.035)');
-        }
-      }
-    }
-
-    function drawLabels() {
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = 'bold 24px Trebuchet MS';
-
-      state.players.forEach((name, i) => {
-        const x = state.lanesX[i];
-        drawPixelRect(x - 68, 28, 136, 60, PLAYER_COLORS[i]);
-        ctx.fillStyle = '#142013';
-        ctx.fillText(name, x, 58);
-      });
-
-      state.rewards.forEach((reward, i) => {
-        const x = state.lanesX[i];
-        drawPixelRect(x - 74, board.height - 118, 148, 68, REWARD_COLORS[i]);
-        ctx.fillStyle = '#19211b';
-        ctx.fillText(reward, x, board.height - 84);
-      });
-    }
-
-    function drawLadders() {
-      const topY = 120;
-      const bottomY = board.height - 160;
-      ctx.lineCap = 'square';
-
-      state.lanesX.forEach((x) => {
-        ctx.strokeStyle = '#d6a25b';
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.moveTo(x - 12, topY);
-        ctx.lineTo(x - 12, bottomY);
-        ctx.moveTo(x + 12, topY);
-        ctx.lineTo(x + 12, bottomY);
-        ctx.stroke();
-
-        ctx.strokeStyle = '#9c6230';
-        ctx.lineWidth = 5;
-        for (let y = topY + 18; y < bottomY; y += 34) {
-          ctx.beginPath();
-          ctx.moveTo(x - 12, y);
-          ctx.lineTo(x + 12, y);
-          ctx.stroke();
-        }
-      });
-
-      state.segments.forEach(({ a, b, y }) => {
-        const x1 = state.lanesX[a];
-        const x2 = state.lanesX[b];
-        ctx.strokeStyle = '#f7e4b0';
-        ctx.lineWidth = 10;
-        ctx.beginPath();
-        ctx.moveTo(x1, y);
-        ctx.lineTo(x2, y);
-        ctx.stroke();
-
-        ctx.strokeStyle = '#ba844d';
-        ctx.lineWidth = 5;
-        for (let x = x1 + 12; x < x2; x += 28) {
-          ctx.beginPath();
-          ctx.moveTo(x, y - 8);
-          ctx.lineTo(x, y + 8);
-          ctx.stroke();
-        }
-      });
-    }
-
-    function drawPathPreview() {
-      if (!state.currentPath) return;
-      const { points } = state.currentPath;
-      ctx.strokeStyle = 'rgba(104,233,255,0.85)';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < Math.max(2, state.tokenIndex + 1); i++) {
-        const point = points[Math.min(i, points.length - 1)];
-        ctx.lineTo(point.x, point.y);
-      }
-      ctx.stroke();
-    }
-
-    function drawToken() {
-      if (!state.currentPath) return;
-      const points = state.currentPath.points;
-      const activePoint = points[Math.min(state.tokenIndex, points.length - 1)];
-      const startLane = Number(playerSelect.value || 0);
-      const color = PLAYER_COLORS[startLane];
-      drawPixelRect(activePoint.x - 18, activePoint.y - 18, 36, 36, color, 'rgba(255,255,255,0.35)');
-      drawPixelRect(activePoint.x - 8, activePoint.y - 4, 6, 6, '#0f1410');
-      drawPixelRect(activePoint.x + 2, activePoint.y - 4, 6, 6, '#0f1410');
-      drawPixelRect(activePoint.x - 10, activePoint.y + 8, 20, 4, '#0f1410');
-    }
-
-    function renderBoard() {
-      ctx.clearRect(0, 0, board.width, board.height);
-      drawBlockBackground();
-      drawLabels();
-      drawLadders();
-      drawPathPreview();
-      drawToken();
-    }
-
-    function setResultMessage(title, desc) {
-      resultBox.innerHTML = `<strong>${title}</strong><span>${desc}</span>`;
-    }
-
-    function updateButtons() {
-      drawBtn.disabled = state.animating;
-      autoBtn.disabled = state.animating;
-      shuffleBtn.disabled = state.animating;
-      resetBtn.disabled = state.animating;
-      playerSelect.disabled = state.animating;
-    }
-
-    function animatePath(startLane) {
-      if (state.animating) return;
-      state.currentPath = tracePath(startLane);
-      state.tokenIndex = 0;
-      state.animating = true;
-      updateButtons();
-      renderBoard();
-
-      const points = state.currentPath.points;
-      const tick = () => {
-        state.tokenIndex += 1;
-        renderBoard();
-        if (state.tokenIndex < points.length - 1) {
-          setTimeout(tick, 240);
-          return;
-        }
-
-        const rewardIndex = state.currentPath.endLane;
-        state.discovered[startLane] = rewardIndex;
-        renderLegend();
-        setResultMessage(
-          `${state.players[startLane]}의 결과: ${state.rewards[rewardIndex]}`,
-          `${state.players[startLane]} 캐릭터가 광산 사다리를 내려가서 ${state.rewards[rewardIndex]} 보상을 얻었어요.`
-        );
-        state.animating = false;
-        updateButtons();
-
-        if (state.autoMode && state.autoQueue.length) {
-          const next = state.autoQueue.shift();
-          playerSelect.value = String(next);
-          setTimeout(() => animatePath(next), 700);
-        } else {
-          state.autoMode = false;
-          state.autoQueue = [];
-        }
-      };
-
-      setTimeout(tick, 260);
-    }
-
-    function startDraw() {
-      const lane = Number(playerSelect.value || 0);
-      animatePath(lane);
-    }
-
-    function startAuto() {
-      if (state.animating) return;
-      state.autoMode = true;
-      state.autoQueue = [0, 1, 2, 3];
-      const first = state.autoQueue.shift();
-      playerSelect.value = String(first);
-      animatePath(first);
-    }
-
-    function resetAll() {
-      playerInputs[0].value = '스티브';
-      playerInputs[1].value = '알렉스';
-      playerInputs[2].value = '주민';
-      playerInputs[3].value = '탐험가';
-      rewardInputs[0].value = '다이아몬드';
-      rewardInputs[1].value = '철 곡괭이';
-      rewardInputs[2].value = '황금 사과';
-      rewardInputs[3].value = '용암 청소';
-      updateNamesFromInputs();
-      buildBoard();
-      renderLegend();
-      renderBoard();
-      setResultMessage('초기화 완료', '새로운 광산 지형으로 다시 시작할 수 있어요.');
-    }
-
-    playerInputs.concat(rewardInputs).forEach((input) => {
-      input.addEventListener('input', updateNamesFromInputs);
-    });
-
-    shuffleBtn.addEventListener('click', () => {
-      buildBoard();
-      renderBoard();
-      renderLegend();
-      setResultMessage('지형 재생성!', '사다리 경로가 새롭게 섞였습니다. 다시 도전해보세요.');
-    });
-    drawBtn.addEventListener('click', startDraw);
-    autoBtn.addEventListener('click', startAuto);
-    resetBtn.addEventListener('click', resetAll);
-
-    buildBoard();
-    updateNamesFromInputs();
-    renderLegend();
-    renderBoard();
-    setResultMessage('게임 준비 완료', '플레이어를 선택하고 사다리를 시작하세요.');
+    var box = document.getElementById('games');
+    GAMES.forEach(function (g) { var s = document.createElement('span'); s.textContent = g.icon + ' ' + g.name; box.appendChild(s); });
   </script>
 </body>
 </html>
