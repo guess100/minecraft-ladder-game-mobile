@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#15121d" />
+  <title>참가 · 팀 대항 오락실</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/play.css" />
+</head>
+<body>
+  <div class="rotate-tip"><div class="ph">📱</div>폰을 세로로 들어 주세요<small>화면 자동 회전을 끄면 편해요</small></div>
+  <div class="conn hidden" id="conn">연결이 끊겼어요 — 다시 연결 중…</div>
+  <div class="top hidden" id="top">
+    <div class="team" id="tTeam"></div>
+    <div class="score" id="tScore"></div>
+    <div class="clock hidden" id="tClock"></div>
+    <button class="snd" id="tSnd" aria-label="소리 켜기/끄기"></button>
+  </div>
+  <div class="wrap" id="wrap"></div>
+  <script src="vendor/peerjs.min.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/games.js"></script>
+  <script src="js/play.js"></script>
+</body>
+</html>
