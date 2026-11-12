@@ -202,6 +202,25 @@ body[data-view="lobby"] #mini-qr { visibility: hidden; }
 .mini { background: var(--panel2); border: 1px solid var(--line); border-radius: .5rem; padding: .35rem .7rem; font-weight: 700; font-size: .85rem; }
 .mini.danger { color: var(--red); }
 
+/* ---------- 팀전 / 개인전 선택 ---------- */
+.mode-switch { display: inline-flex; gap: .4rem; background: var(--bg2); border: 1px solid var(--line); border-radius: 1rem; padding: .3rem; margin-bottom: 1.2rem; }
+.mode-btn { background: none; border: 0; border-radius: .75rem; padding: .5rem 1rem; display: flex; flex-direction: column; align-items: flex-start; color: var(--muted); }
+.mode-btn b { font-size: 1.1rem; }
+.mode-btn small { font-size: .72rem; }
+.mode-btn.on { background: var(--accent); color: #1a1426; }
+.settings .mode-switch { margin: 0; }
+
+/* ---------- 참가자가 많을 때(개인전 17명 이상): 2단으로 ---------- */
+.lanes.many { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(0, 1fr); column-gap: 2.4rem; row-gap: .25rem; }
+.lanes.many .lane { max-height: none; grid-template-columns: 2rem 8rem 1fr 6rem; gap: .5rem; }
+.lanes.many .ln-name, .lanes.many .ln-val { font-size: .95rem; }
+.lanes.many .ln-rank { font-size: .9rem; }
+.lanes.many .ln-runner { font-size: 1.2rem; }
+.flist.many { display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--rows, 20), minmax(0, 1fr)); grid-template-columns: 1fr 1fr; column-gap: 1rem; width: min(80rem, 100%); }
+.flist.many .frow { max-height: none; font-size: .95rem; }
+.side { overflow: auto; }
+.chips { overflow: auto; }
+
 /* =====================================================================
    휴대폰·작은 화면에서 진행할 때: 세로로 쌓고, 스크롤되게, 버튼은 아래 고정
    ===================================================================== */
@@ -326,4 +345,12 @@ body[data-view="lobby"] #mini-qr { visibility: hidden; }
   .settings { width: 100%; }
   .tm-row { flex-wrap: wrap; }
   .tm-row small { min-width: 0; }
+
+  .mode-switch { display: flex; width: 100%; margin-bottom: .9rem; }
+  .mode-btn { flex: 1; align-items: center; padding: .45rem .4rem; }
+  .mode-btn b { font-size: 1rem; }
+  .lanes.many { display: flex; flex-direction: column; }
+  .lanes.many .lane { grid-template-columns: 1.4rem 5.6rem 1fr 4.4rem; gap: .4rem; }
+  .lanes.many .ln-name, .lanes.many .ln-val { font-size: .82rem; }
+  .flist.many { display: flex; flex-direction: column; }
 }

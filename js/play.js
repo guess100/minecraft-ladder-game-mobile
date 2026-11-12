@@ -115,8 +115,11 @@
     return true;
   }
 
-  // ----- 팀 선택 -----
+  const isSolo = () => !!(st && st.mode === 'solo');
+
+  // ----- 팀 선택 / 개인전 이름 입력 -----
   function renderJoin() {
+    if (isSolo()) return renderJoinSolo();
     const key = 'join:' + st.teams.map((x) => x.id + x.name).join(',') + st.allowNew + st.full;
     const prev = $('.name-input');
     const typed = prev ? prev.value : '';
@@ -136,6 +139,19 @@
     } else if (st.full) card.append(h('p', { class: 'muted' }, '팀이 가득 찼어요. 위에서 우리 팀을 골라 주세요.'));
     wrap.append(card);
   }
+  function renderJoinSolo() {
+    const prev = $('.name-input');
+    const typed = prev ? prev.value : '';
+    if (!setScreen('join-solo:' + st.full)) return;
+    const inp = h('input', { class: 'name-input', maxlength: 12, placeholder: '예) 홍길동', value: typed || null, autocomplete: 'name' });
+    const go = () => { const v = inp.value.trim(); if (!v) { inp.focus(); return; } Sfx.unlock(); client.send({ t: 'join', name: v }); };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    const card = h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, st.title + ' · 개인전'), h('h1', null, '내 이름을 입력해 주세요'),
+      h('p', { class: 'muted' }, '큰 화면과 순위표에 이 이름으로 나와요'));
+    if (st.full) card.append(h('p', { class: 'muted' }, '정원이 가득 찼어요. 진행자에게 알려 주세요.'));
+    else card.append(h('div', { class: 'name-row' }, inp, h('button', { class: 'btn primary', onclick: go }, '입장')));
+    wrap.append(card);
+  }
 
   // ----- 대기 -----
   function renderWait() {
@@ -148,11 +164,11 @@
         h('div', { class: 'big-rank', id: 'wRank' }),
         h('p', { class: 'muted', id: 'wMsg' }),
         h('div', { class: 'mini-board', id: 'wBoard' }),
-        h('button', { class: 'link', onclick: () => { if (confirm('다른 팀으로 바꿀까요?')) client.send({ t: 'leave' }); } }, '팀 바꾸기')));
+        isSolo() ? null : h('button', { class: 'link', onclick: () => { if (confirm('다른 팀으로 바꿀까요?')) client.send({ t: 'leave' }); } }, '팀 바꾸기')));
     }
     $('#wBadge').innerHTML = ''; $('#wBadge').append(h('i', { style: { background: t.color } }), t.name);
     $('#wRank').innerHTML = ''; $('#wRank').append(h('b', null, t.rank), '위 ', h('small', null, `${t.total}점`));
-    $('#wMsg').textContent = st.view === 'lobby' ? '입장 완료! 다른 팀을 기다리는 중이에요 🙌' : '진행자가 다음 게임을 고르는 중이에요';
+    $('#wMsg').textContent = st.view === 'lobby' ? (isSolo() ? '입장 완료! 다른 참가자를 기다리는 중이에요 🙌' : '입장 완료! 다른 팀을 기다리는 중이에요 🙌') : '진행자가 다음 게임을 고르는 중이에요';
     const b = $('#wBoard'); b.innerHTML = '';
     st.teams.slice(0, 8).forEach((x) => b.appendChild(h('div', { class: 'mb-row' + (x.id === t.id ? ' me' : '') }, h('span', null, x.rank), h('i', { style: { background: x.color } }), h('span', { class: 'nm' }, x.name), h('b', null, x.total + '점'))));
   }
@@ -297,8 +313,8 @@
     const medal = ['🥇', '🥈', '🥉'][mine.rank - 1];
     wrap.append(h('div', { class: 'card center result' + (mine.rank === 1 ? ' win' : '') },
       h('div', { class: 'muted' }, g.icon + ' ' + g.name + ' 결과'),
-      mine.rank ? h('div', { class: 'res-rank' }, medal || '🎖️', h('b', null, mine.rank + '위'), h('small', null, `/ ${r.teams}팀`)) : h('div', { class: 'res-rank' }, '😴', h('b', null, '기록 없음')),
-      mine.rank ? h('div', { class: 'res-val' }, '팀 기록 ' + fmtValue(g, mine.v)) : null,
+      mine.rank ? h('div', { class: 'res-rank' }, medal || '🎖️', h('b', null, mine.rank + '위'), h('small', null, `/ ${r.teams}${isSolo() ? '명' : '팀'}`)) : h('div', { class: 'res-rank' }, '😴', h('b', null, '기록 없음')),
+      mine.rank ? h('div', { class: 'res-val' }, (isSolo() ? '내 기록 ' : '팀 기록 ') + fmtValue(g, mine.v)) : null,
       h('div', { class: 'res-pts' }, `+${mine.pts}점`),
       h('p', { class: 'muted small' }, '큰 화면에서 다음 게임을 기다려요')));
     if (mine.rank === 1) { Confetti.burst(140); Sfx.play('win'); }
