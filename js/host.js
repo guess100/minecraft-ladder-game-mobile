@@ -678,6 +678,11 @@
   $('#mini-qr-svg').innerHTML = qrSvg(joinUrl());
   $('#title').onclick = openSettings;
 
+  // 진행 기기(특히 휴대폰) 화면이 꺼지지 않게 시도
+  async function wake() { try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch (e) { /* 무시 */ } }
+  document.addEventListener('pointerdown', wake, { once: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+
   timer = setInterval(tick, 100);
   // 접속 폰 수 등 주기적 갱신
   setInterval(() => { if (view === 'lobby' || view === 'menu') renderSide(); if (round && round.phase === 'intro') { const el = document.querySelector('.intro-ready'); if (el) el.textContent = `📱 준비된 폰 ${[...online.keys()].filter((c) => S.members[c]).length}대 · 팀당 평균 점수로 순위를 매겨요`; } }, 1500);
