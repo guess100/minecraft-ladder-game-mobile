@@ -39,13 +39,14 @@
 
 ## 기술 메모
 
-- 진행 노트북이 "서버" 역할을 합니다. 폰과는 **두 길을 동시에** 열고, 폰은 먼저 열린 쪽을 씁니다.
+- **Firebase 연결(권장)**: `js/firebase-config.js`에 Firebase 설정을 넣으면 폰↔진행 화면 메시지가 Firebase Realtime Database(구글)로 오갑니다. 설정 방법은 [`FIREBASE_설정.md`](FIREBASE_설정.md), 보안 규칙은 `database.rules.json`. 진행 화면에 `(Firebase)`로 표시됩니다.
+- Firebase 설정이 없을 때: 진행 노트북이 "서버" 역할을 합니다. 폰과는 **두 길을 동시에** 열고, 폰은 먼저 열린 쪽을 씁니다.
   1. 직접 연결: WebRTC(PeerJS). 연결 중개는 공개 PeerJS 서버(0.peerjs.com).
   2. 중계 연결: 공개 MQTT 브로커(`broker.emqx.io`, `broker.hivemq.com`, WebSocket/wss). 폰이 LTE라서 직접 연결이 막혀도 동작합니다. 팀 이름·점수가 이 외부 서버를 거쳐 가며, 무작위 방 코드로 구분됩니다.
   - 진행 화면 오른쪽 위에 `(직접✓ 중계✓)` 처럼 각 길의 상태가 표시됩니다.
   - 옵션: `?net=peer`(직접만) · `?net=relay`(중계만) · `?net=local`(같은 브라우저 탭끼리 테스트) · `?ps=호스트:포트/경로`(자체 PeerServer) · `?mqtt=wss://주소`(자체 브로커). QR 링크에 자동 전달됩니다.
 - 회사 방화벽은 일부 포트를 막을 수 있으니 **행사장 인터넷으로 미리 리허설**하세요.
-- 라이브러리: `vendor/peerjs.min.js`(PeerJS 1.5.4, MIT), `vendor/qrcode.js`(qrcode-generator 1.4.4, MIT). 효과음은 WebAudio로 합성(음원 파일 없음).
+- 라이브러리: `vendor/firebase-*-compat.js`(Firebase JS SDK 10.14.1, Apache-2.0), `vendor/peerjs.min.js`(PeerJS 1.5.4, MIT), `vendor/qrcode.js`(qrcode-generator 1.4.4, MIT). 효과음은 WebAudio로 합성(음원 파일 없음).
 
 ## 벤치마킹 분석 요약 (teamgame.kr)
 
