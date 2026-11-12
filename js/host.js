@@ -327,7 +327,10 @@
     const ns = $('#netstat');
     const txt = { online: `● 접속 ${nOnline}대`, connecting: '○ 연결 준비 중…', reconnecting: '○ 다시 연결 중…', 'waiting-id': '○ 방 다시 여는 중…' }[netStatus] || `⚠ 연결 오류 (${netStatus})`;
     ns.textContent = txt;
-    if (netDetail) {
+    if (netDetail && netDetail.fb) {
+      ns.title = 'Firebase 연결';
+      ns.textContent += netDetail.fb === 'online' ? '  (Firebase)' : '';
+    } else if (netDetail) {
       const mark = (v) => (v === 'online' ? '✓' : '✕');
       ns.title = `직접 연결 ${mark(netDetail.peer)} · 중계 연결 ${mark(netDetail.relay)}`;
       ns.textContent += `  (직접${mark(netDetail.peer)} 중계${mark(netDetail.relay)})`;

@@ -7,7 +7,11 @@
  *     폰이 LTE·5G라서 직접 연결이 막혀도 일반 웹 접속만 되면 동작.
  * 폰은 두 길 중 먼저 열린 쪽을 쓰고, 그쪽이 끊기면 다른 쪽으로 넘어갑니다.
  *
+ * js/firebase-config.js 에 Firebase 설정이 있으면, 위 두 길 대신 Firebase Realtime Database 로
+ * 주고받습니다 (구글 인프라라 무료 공개 서버보다 안정적).
+ *
  * 옵션 (QR 링크로 폰에도 그대로 전달):
+ *  ?net=firebase  Firebase만 (설정이 있을 때 기본값)   ?net=auto  무료 공개 서버 두 길
  *  ?net=peer   직접 연결만     ?net=relay  중계 연결만
  *  ?net=local  같은 브라우저 탭끼리(BroadcastChannel) — 리허설/테스트용
  *  ?ps=host:port/path [&pss=0|1]   자체 PeerServer
@@ -20,9 +24,12 @@
   const DEFAULT_BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
   const params = new URLSearchParams(location.search);
 
+  function fbConfig() { const c = global.TG_FIREBASE; return c && c.databaseURL ? c : null; }
   function netMode() {
     const v = params.get('net');
-    return v === 'local' || v === 'peer' || v === 'relay' ? v : 'auto';
+    if (v === 'local' || v === 'peer' || v === 'relay' || v === 'auto') return v;
+    if (v === 'firebase' || fbConfig()) return global.firebase && fbConfig() ? 'firebase' : 'auto';
+    return 'auto';
   }
   function brokers() {
     const v = params.get('mqtt');
@@ -48,7 +55,7 @@
   // 참가 URL에 그대로 넘겨줄 연결 관련 파라미터
   function passParams() {
     const out = new URLSearchParams();
-    ['net', 'ps', 'pss', 'mqtt'].forEach((k) => { if (params.get(k)) out.set(k, params.get(k)); });
+    ['net', 'ps', 'pss', 'mqtt', 'fbemu'].forEach((k) => { if (params.get(k)) out.set(k, params.get(k)); });
     return out;
   }
 
@@ -138,6 +145,7 @@
   function createHost(code, H) {
     const mode = netMode();
     if (mode === 'local') return localHost(code, H);
+    if (mode === 'firebase') return fbHost(code, H);
     if (mode === 'peer') return peerHost(code, H);
     if (mode === 'relay') return relayHost(code, H);
     // auto: 두 길을 모두 열어 둠
@@ -242,6 +250,122 @@
     };
   }
 
+  // ===================== Firebase Realtime Database =====================
+  // rooms/{코드}/host            진행 화면 접속 표시 {sid} (끊기면 자동 삭제)
+  // rooms/{코드}/clients/{id}    폰 접속 표시 (끊기면 자동 삭제)
+  // rooms/{코드}/toHost/{push}   폰 → 진행 화면 메시지 {from, type, j}
+  // rooms/{코드}/toClient/{id}/{push}  진행 화면 → 폰 메시지 {j}
+  // 메시지는 읽는 쪽이 바로 지움. 본문(j)은 JSON 문자열.
+  let fbDbInst = null;
+  function fbDb() {
+    if (fbDbInst) return fbDbInst;
+    const fb = global.firebase;
+    const app = fb.apps && fb.apps.length ? fb.app() : fb.initializeApp(fbConfig());
+    const db = app.database();
+    const emu = params.get('fbemu');
+    if (emu && db.useEmulator) { const [hh, pp] = emu.split(':'); db.useEmulator(hh, Number(pp || 9000)); }
+    fbDbInst = db;
+    return db;
+  }
+
+  function fbHost(code, H) {
+    const db = fbDb();
+    const room = db.ref('rooms/' + code);
+    const sid = rid(8);
+    const seen = new Set();
+    let dead = false;
+    const status = (s) => H.onStatus && H.onStatus(s, { fb: s === 'online' ? 'online' : s });
+    const conn = db.ref('.info/connected');
+    const onConn = (snap) => {
+      if (dead) return;
+      if (snap.val()) {
+        room.child('host').onDisconnect().remove();
+        room.child('host').set({ sid, at: Date.now() });
+        status('online');
+      } else status('reconnecting');
+    };
+    conn.on('value', onConn);
+    const inbox = room.child('toHost');
+    // 이전 진행 화면이 남긴 메시지는 버림
+    inbox.remove().then(() => {
+      if (dead) return;
+      inbox.on('child_added', (snap) => {
+        const m = snap.val();
+        snap.ref.remove();
+        if (!m || typeof m.from !== 'string' || m.from.length > 40) return;
+        const id = 'f:' + m.from;
+        if (!seen.has(id)) { seen.add(id); H.onConnect && H.onConnect(id); }
+        if (m.type === 'msg' && typeof m.j === 'string') {
+          let data; try { data = JSON.parse(m.j); } catch (e) { return; }
+          H.onMessage && H.onMessage(id, data);
+        }
+      });
+    });
+    room.child('clients').on('child_removed', (snap) => {
+      const id = 'f:' + snap.key;
+      if (seen.delete(id)) H.onClose && H.onClose(id);
+    });
+    status('connecting');
+    return {
+      send(id, msg) { room.child('toClient/' + String(id).slice(2)).push({ j: JSON.stringify(msg) }); },
+      ids() { return Array.from(seen); },
+      destroy() { dead = true; conn.off('value', onConn); room.child('host').remove(); inbox.off(); },
+    };
+  }
+
+  function fbClient(code, H) {
+    const db = fbDb();
+    const room = db.ref('rooms/' + code);
+    const me = rid(12);
+    const inbox = room.child('toClient/' + me);
+    let connected = false, hostSid = null, open = false, dead = false;
+    function setOpen(v) {
+      if (v === open) return;
+      open = v;
+      H.onStatus && H.onStatus(v ? 'open' : connected ? 'no-host' : 'closed');
+    }
+    db.ref('.info/connected').on('value', (snap) => {
+      if (dead) return;
+      connected = !!snap.val();
+      if (connected) {
+        room.child('clients/' + me).onDisconnect().remove();
+        room.child('clients/' + me).set(true);
+      } else { hostSid = null; setOpen(false); }
+    });
+    // 진행 화면이 (다시) 열리면 인사(hello)를 다시 보냄 → 진행 화면을 새로고침해도 이어짐
+    room.child('host').on('value', (snap) => {
+      if (dead) return;
+      const v = snap.val();
+      if (v && v.sid) {
+        const changed = v.sid !== hostSid;
+        hostSid = v.sid;
+        if (!open) { setOpen(true); H.onOpen && H.onOpen(); }
+        else if (changed) H.onOpen && H.onOpen();
+      } else { hostSid = null; setOpen(false); }
+    });
+    inbox.remove().then(() => {
+      if (dead) return;
+      inbox.on('child_added', (snap) => {
+        const m = snap.val();
+        snap.ref.remove();
+        if (!m || typeof m.j !== 'string') return;
+        let data; try { data = JSON.parse(m.j); } catch (e) { return; }
+        H.onMessage && H.onMessage(data);
+      });
+    });
+    H.onStatus && H.onStatus('connecting');
+    addEventListener('pagehide', () => { room.child('clients/' + me).remove(); });
+    return {
+      send(msg) {
+        if (!open) return false;
+        room.child('toHost').push({ from: me, type: 'msg', j: JSON.stringify(msg) });
+        return true;
+      },
+      isOpen() { return open; },
+      destroy() { dead = true; inbox.off(); room.child('clients/' + me).remove(); },
+    };
+  }
+
   function localHost(code, H) {
     const ch = new BroadcastChannel(PREFIX + code);
     const ids = new Set();
@@ -265,6 +389,7 @@
   function createClient(code, H) {
     const mode = netMode();
     if (mode === 'local') return localClient(code, H);
+    if (mode === 'firebase') return fbClient(code, H);
     if (mode === 'peer') return peerClient(code, H);
     if (mode === 'relay') return relayClient(code, H);
     return hybridClient(code, H);
@@ -442,5 +567,5 @@
     };
   }
 
-  global.Net = { createHost, createClient, passParams, netMode };
+  global.Net = { createHost, createClient, passParams, netMode, fbConfig };
 })(window);
