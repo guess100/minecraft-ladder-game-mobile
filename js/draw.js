@@ -121,6 +121,8 @@
     const winner = cand[randInt(cand.length, secureRandom)];
     busy = true; renderBar();
     stage.innerHTML = '';
+    // 휴대폰에서는 설정 목록 아래에 있는 추첨 장면으로 화면을 옮김
+    if (matchMedia('(max-width: 820px)').matches) stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const m = METHODS.find((x) => x.id === S.method);
     const shown = sampleWith(cand, winner, m.max);
     const go = () => RUN[m.id](stage, shown, winner, () => { busy = false; reveal(winner, p); });
