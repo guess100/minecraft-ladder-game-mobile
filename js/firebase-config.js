@@ -16,4 +16,12 @@
  *   appId: "1:1234:web:abcd"
  * };
  */
-window.TG_FIREBASE = null;
+window.TG_FIREBASE = {
+  apiKey: "AIzaSyAAcBDspi40ZFIn8msxKvCNnb2p9Is3DGU",
+  authDomain: "songyear-960a0.firebaseapp.com",
+  databaseURL: "https://songyear-960a0-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "songyear-960a0",
+  storageBucket: "songyear-960a0.firebasestorage.app",
+  messagingSenderId: "555471730485",
+  appId: "1:555471730485:web:37b446488a0c5a2237fe7c"
+};

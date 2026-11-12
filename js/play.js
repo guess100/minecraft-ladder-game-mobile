@@ -51,6 +51,7 @@
     wrap.append(h('div', { class: 'card center' }, h('div', { class: 'spinner' }), h('h2', null, '진행 화면에 연결 중…'), h('p', { id: 'cstat', class: 'muted' }, statusText()), h('p', { class: 'muted small' }, `방 코드 ${code}`)));
   }
   function statusText() {
+    if (status === 'fb-error') return '서버 접속이 거부됐어요. 진행자에게 알려 주세요 (Firebase 규칙 확인 필요).';
     return { 'no-host': '진행 화면을 찾지 못했어요. 진행자 노트북이 켜져 있는지 확인해 주세요. 계속 다시 시도할게요.', error: '연결이 불안정해요. 다시 시도 중…', closed: '연결이 끊겼어요. 다시 연결 중…' }[status] || '잠시만 기다려 주세요';
   }
 

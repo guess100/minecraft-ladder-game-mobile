@@ -275,13 +275,14 @@
     const seen = new Set();
     let dead = false;
     const status = (s) => H.onStatus && H.onStatus(s, { fb: s === 'online' ? 'online' : s });
+    let failed = false;
+    const fail = (e) => { if (failed || dead) return; failed = true; console.error('[firebase]', e); status('error:fb-' + (e && /permission/i.test(String(e.code || e.message)) ? 'permission' : 'other')); };
     const conn = db.ref('.info/connected');
     const onConn = (snap) => {
       if (dead) return;
       if (snap.val()) {
         room.child('host').onDisconnect().remove();
-        room.child('host').set({ sid, at: Date.now() });
-        status('online');
+        Promise.resolve(room.child('host').set({ sid, at: Date.now() })).then(() => { if (!failed) status('online'); }, fail);
       } else status('reconnecting');
     };
     conn.on('value', onConn);
@@ -299,8 +300,8 @@
           let data; try { data = JSON.parse(m.j); } catch (e) { return; }
           H.onMessage && H.onMessage(id, data);
         }
-      });
-    });
+      }, fail);
+    }, fail);
     room.child('clients').on('child_removed', (snap) => {
       const id = 'f:' + snap.key;
       if (seen.delete(id)) H.onClose && H.onClose(id);
@@ -343,6 +344,7 @@
         else if (changed) H.onOpen && H.onOpen();
       } else { hostSid = null; setOpen(false); }
     });
+    const fail = (e) => { console.error('[firebase]', e); H.onStatus && H.onStatus('fb-error'); };
     inbox.remove().then(() => {
       if (dead) return;
       inbox.on('child_added', (snap) => {
@@ -351,8 +353,8 @@
         if (!m || typeof m.j !== 'string') return;
         let data; try { data = JSON.parse(m.j); } catch (e) { return; }
         H.onMessage && H.onMessage(data);
-      });
-    });
+      }, fail);
+    }, fail);
     H.onStatus && H.onStatus('connecting');
     addEventListener('pagehide', () => { room.child('clients/' + me).remove(); });
     return {
