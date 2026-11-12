@@ -4,15 +4,21 @@
   const { h, $, store, uid, Sfx, Confetti, qrSvg, TEAM_COLORS, randInt, secureRandom } = TG;
 
   const KEY = 'tg-host-v1';
-  const MAX_TEAMS = 16;
+  const MAX_TEAMS = 16;   // 팀전 최대 팀 수
+  const MAX_SOLO = 40;    // 개인전 최대 인원
   const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
   // ---------------- 저장 상태 ----------------
   const S = Object.assign({
-    code: null, title: '송년회 팀 대항 오락실', teams: [], members: {}, history: [], allowNew: true,
+    code: null, title: '송년회 팀 대항 오락실', teams: [], members: {}, history: [], allowNew: true, mode: 'team',
   }, store.get(KEY, {}));
   if (!S.code) S.code = Array.from({ length: 5 }, () => CODE_CHARS[randInt(CODE_CHARS.length)]).join('');
   const save = () => store.set(KEY, S);
+  // 모드: 'team' 팀전(여러 명이 한 팀) / 'solo' 개인전(한 사람 = 한 참가 단위)
+  const solo = () => S.mode === 'solo';
+  const U = () => (solo() ? '명' : '팀');          // 세는 단위
+  const WHO = () => (solo() ? '참가자' : '팀');     // 부르는 말
+  const maxN = () => (solo() ? MAX_SOLO : MAX_TEAMS);
   save();
 
   // ---------------- 실행 상태 ----------------
@@ -52,12 +58,18 @@
     if (!cid) return;
     if (m.t === 'join') {
       let team = null;
-      if (m.teamId) team = S.teams.find((t) => t.id === m.teamId);
+      const norm = (x) => x.replace(/\s/g, '').toLowerCase();
+      if (m.teamId && !solo()) team = S.teams.find((t) => t.id === m.teamId);
       else if (typeof m.name === 'string') {
         const name = m.name.trim().slice(0, 12);
-        if (!name) return net.send(id, { t: 'error', msg: '팀 이름을 입력해 주세요' });
-        team = S.teams.find((t) => t.name.replace(/\s/g, '').toLowerCase() === name.replace(/\s/g, '').toLowerCase());
-        if (!team) {
+        if (!name) return net.send(id, { t: 'error', msg: solo() ? '이름을 입력해 주세요' : '팀 이름을 입력해 주세요' });
+        team = S.teams.find((t) => norm(t.name) === norm(name));
+        if (solo()) {
+          // 개인전: 이름 하나에 한 사람만. 같은 이름이 있으면 다른 이름으로
+          if (team) return net.send(id, { t: 'error', msg: `"${name}"은(는) 이미 있는 이름이에요. 다른 이름(예: ${name}2)으로 입력해 주세요` });
+          if (S.teams.length >= MAX_SOLO) return net.send(id, { t: 'error', msg: `정원이 가득 찼어요 (최대 ${MAX_SOLO}명)` });
+          team = addTeam(name);
+        } else if (!team) {
           if (!S.allowNew) return net.send(id, { t: 'error', msg: '진행자가 만든 팀 중에서 골라 주세요' });
           if (S.teams.length >= MAX_TEAMS) return net.send(id, { t: 'error', msg: `팀이 가득 찼어요 (최대 ${MAX_TEAMS}팀)` });
           team = addTeam(name);
@@ -70,7 +82,13 @@
       if (view === 'lobby') flashChip(team.id);
       return;
     }
-    if (m.t === 'leave') { delete S.members[cid]; save(); changed(); return; }
+    if (m.t === 'leave') {
+      const tid = S.members[cid];
+      delete S.members[cid];
+      // 개인전에서 나가면 그 사람 자리도 지움 (아직 점수가 없을 때만)
+      if (solo() && tid && !S.history.some((r) => r.points[tid] > 0)) S.teams = S.teams.filter((t) => t.id !== tid);
+      save(); changed(); return;
+    }
     if (m.t === 'score' && round && m.rid === round.rid && (round.phase === 'play' || round.phase === 'collect')) {
       const teamId = S.members[cid];
       if (!teamId) return;
@@ -266,7 +284,7 @@
     const st = standings();
     const now = Date.now();
     const msg = {
-      t: 'state', title: S.title, view, allowNew: S.allowNew, full: S.teams.length >= MAX_TEAMS,
+      t: 'state', title: S.title, mode: S.mode, view, allowNew: S.allowNew || solo(), full: S.teams.length >= maxN(),
       teams: st.map((x) => ({ id: x.team.id, name: x.team.name, color: x.team.color, total: x.total, rank: x.rank })),
       me: cid && S.members[cid] ? { teamId: S.members[cid] } : null,
       round: null, final: null,
@@ -336,24 +354,37 @@
     main.append(h('div', { class: 'lobby' },
       h('div', { class: 'qr-card' }, h('div', { class: 'qr', html: qrSvg(url) }), h('div', { class: 'qr-code' }, '방 코드 ', h('b', null, S.code))),
       h('div', { class: 'lobby-copy' },
+        modeSwitch(),
         h('h1', null, '폰 카메라로', h('br'), h('em', null, 'QR'), '을 찍어주세요'),
         h('ol', { class: 'steps' },
           h('li', null, h('b', null, '1'), 'QR 찍기 (앱 설치 X)'),
-          h('li', null, h('b', null, '2'), '우리 팀 이름 입력'),
-          h('li', null, h('b', null, '3'), '같은 팀원은 같은 팀 선택')),
-        h('div', { class: 'joined' }, '참가 ', h('b', { id: 'team-count' }, S.teams.length + '팀')),
+          solo() ? h('li', null, h('b', null, '2'), '내 이름 입력') : h('li', null, h('b', null, '2'), '우리 팀 이름 입력'),
+          solo() ? h('li', null, h('b', null, '3'), '1인 1폰 개인전') : h('li', null, h('b', null, '3'), '같은 팀원은 같은 팀 선택')),
+        h('div', { class: 'joined' }, '참가 ', h('b', { id: 'team-count' }, S.teams.length + U())),
         h('div', { class: 'chips', id: 'chips' }),
         h('div', { class: 'url' }, url))));
     foot.append(
       btn('게임 고르러 가기', () => { view = 'menu'; render(); changed(); }, 'primary', 'Space'),
-      btn('⚙️ 팀 관리·설정', openSettings));
+      btn(`⚙️ ${WHO()} 관리·설정`, openSettings));
     renderSide();
+  }
+  // 팀전 / 개인전 선택
+  function modeSwitch() {
+    const mk = (m, label, sub) => h('button', { class: 'mode-btn' + (S.mode === m ? ' on' : ''), onclick: () => setMode(m) }, h('b', null, label), h('small', null, sub));
+    return h('div', { class: 'mode-switch' }, mk('team', '👥 팀전', '팀을 만들거나 골라서 참가'), mk('solo', '🙋 개인전', '각자 이름으로 참가'));
+  }
+  function setMode(m) {
+    if (S.mode === m) return;
+    if ((S.teams.length || S.history.length) && !confirm(`${m === 'solo' ? '개인전' : '팀전'}으로 바꿀까요?\n지금까지의 참가자와 점수가 모두 지워지고, 참가자는 다시 입장해야 해요.`)) return;
+    S.mode = m; S.teams = []; S.members = {}; S.history = [];
+    round = null; final = null;
+    save(); closeModal(); render(); changed();
   }
   function renderChips(el) {
     el.innerHTML = '';
     S.teams.forEach((t) => {
       const n = onlineCount(t.id);
-      el.appendChild(h('span', { class: 'chip', 'data-id': t.id, style: { '--c': t.color } }, h('i'), t.name, h('small', null, t.bot ? '가상' : n ? `${n}대` : '대기')));
+      el.appendChild(h('span', { class: 'chip', 'data-id': t.id, style: { '--c': t.color } }, h('i'), t.name, h('small', null, t.bot ? '가상' : n ? (solo() ? '접속' : `${n}대`) : '대기')));
     });
   }
   function flashChip(id) { const c = document.querySelector(`.chip[data-id="${id}"]`); if (c) { c.classList.remove('new'); void c.offsetWidth; c.classList.add('new'); } }
@@ -376,7 +407,7 @@
       h('div', { class: 'menu-left' }, h('div', { class: 'sec-title' }, '게임을 골라주세요 ', h('small', null, `${GAMES.length}종 · 방향키+Space로도 선택`)), grid),
       h('aside', { class: 'side', id: 'side' })));
     foot.append(
-      btn('📱 참가 QR 크게', () => showQR()), btn('⚙️ 팀 관리·설정', openSettings), btn('± 점수 보정', openAdjust),
+      btn('📱 참가 QR 크게', () => showQR()), btn(`⚙️ ${WHO()} 관리·설정`, openSettings), btn('± 점수 보정', openAdjust),
       btn('↩ 직전 게임 결과 취소', undoLast, S.history.length ? '' : 'disabled'),
       h('span', { class: 'grow' }),
       btn('🏆 최종 순위 발표', startFinal, 'gold'));
@@ -390,16 +421,17 @@
       const st = standings();
       side.innerHTML = '';
       side.append(h('div', { class: 'side-title' }, '종합 순위 ', h('small', null, `${S.history.length}게임 진행`)));
-      if (!st.length) side.append(h('div', { class: 'empty' }, '아직 참가한 팀이 없어요'));
+      if (!st.length) side.append(h('div', { class: 'empty' }, `아직 참가한 ${WHO()}이(가) 없어요`));
       st.forEach((x) => side.appendChild(h('div', { class: 'srow' + (x.rank <= 3 && S.history.length ? ' top' + x.rank : '') },
         h('span', { class: 'rk' }, x.rank), h('i', { style: { background: x.team.color } }), h('span', { class: 'nm' }, x.team.name),
         h('span', { class: 'on' }, x.team.bot ? '' : onlineCount(x.team.id) ? '●' : '○'), h('b', null, `${x.total}점`))));
     }
     const chips = $('#chips');
-    if (chips) { renderChips(chips); $('#team-count').textContent = S.teams.length + '팀'; }
+    if (chips) { renderChips(chips); $('#team-count').textContent = S.teams.length + U(); }
   }
 
   // ----- 게임 라운드 -----
+  function readyText(n) { return solo() ? `📱 준비된 폰 ${n}대 · 개인전` : `📱 준비된 폰 ${n}대 · 팀당 평균 점수로 순위를 매겨요`; }
   function renderRound() {
     const g = GameById[round.gameId];
     if (round.phase === 'intro') {
@@ -411,7 +443,7 @@
           h('h1', null, g.name),
           h('p', { class: 'intro-desc' }, g.desc),
           h('ul', null, g.howto.map((x) => h('li', null, x))),
-          h('div', { class: 'intro-ready' }, `📱 준비된 폰 ${ready}대 · 팀당 평균 점수로 순위를 매겨요`)),
+          h('div', { class: 'intro-ready' }, readyText(ready))),
         h('div', { class: 'phone-mock' }, h('div', { class: 'pm-screen' }, h('div', { class: 'pm-icon' }, g.icon), h('div', null, g.name), h('small', null, '폰 화면에도 방법이 떠요')))));
       foot.append(btn('▶ 시작', startCountdown, 'primary', 'Space'), btn('← 다른 게임', backToMenu, '', 'Esc'));
     } else if (round.phase === 'countdown') {
@@ -446,6 +478,7 @@
       laneEls[t.id] = row;
     });
     lanes.style.setProperty('--n', Math.max(4, S.teams.length));
+    lanes.classList.toggle('many', S.teams.length > 16);
   }
   function updateLive() {
     if (!round || (round.phase !== 'play' && round.phase !== 'collect')) return;
@@ -515,7 +548,7 @@
   // ----- 최종 발표 -----
   function startFinal() {
     if (!S.teams.length) return;
-    if (!confirm('최종 순위 발표를 시작할까요?\n(꼴찌부터 한 팀씩 공개돼요)')) return;
+    if (!confirm(`최종 순위 발표를 시작할까요?\n(꼴찌부터 한 ${solo() ? '명' : '팀'}씩 공개돼요)`)) return;
     round = null;
     final = { order: standings(), revealed: 0 };
     view = 'final';
@@ -539,7 +572,7 @@
     }
     const n = final.order.length;
     const allShown = final.revealed >= n;
-    const list = h('div', { class: 'flist' });
+    const list = h('div', { class: 'flist' + (final.order.length > 16 ? ' many' : ''), style: { '--rows': Math.ceil(final.order.length / 2) } });
     final.order.forEach((x, i) => {
       const shown = i >= n - final.revealed;
       const isNext = i === n - final.revealed - 1;
@@ -560,7 +593,7 @@
       foot.append(btn('← 게임 선택으로', () => { final = null; view = 'menu'; render(); changed(); }), btn('🎉 폭죽 한 번 더', () => { Confetti.rain(3); Sfx.play('win'); }, 'gold', 'Space'));
     } else {
       main.append(h('div', { class: 'final' }, h('h1', null, '최종 순위 발표'), h('div', { class: 'final-sub' }, `${S.title} · ${S.history.length}게임 합산`), list));
-      foot.append(btn(final.revealed === n - 1 ? '👑 우승팀 공개!' : '다음 팀 공개', revealNext, 'primary', 'Space'), btn('← 취소', () => { final = null; view = 'menu'; render(); changed(); }, '', 'Esc'));
+      foot.append(btn(final.revealed === n - 1 ? (solo() ? '👑 우승자 공개!' : '👑 우승팀 공개!') : (solo() ? '다음 사람 공개' : '다음 팀 공개'), revealNext, 'primary', 'Space'), btn('← 취소', () => { final = null; view = 'menu'; render(); changed(); }, '', 'Esc'));
     }
   }
 
@@ -575,21 +608,21 @@
 
   function showQR() {
     const url = joinUrl();
-    modal(h('div', { class: 'bigqr' }, h('div', { class: 'qr', html: qrSvg(url) }), h('div', null, h('h2', null, 'QR 찍고 참가하기'), h('p', null, '늦게 온 팀원도 같은 QR로 합류해요'), h('div', { class: 'qr-code' }, '방 코드 ', h('b', null, S.code)), h('div', { class: 'url' }, url))), 'qrmodal');
+    modal(h('div', { class: 'bigqr' }, h('div', { class: 'qr', html: qrSvg(url) }), h('div', null, h('h2', null, 'QR 찍고 참가하기'), h('p', null, solo() ? '늦게 온 사람도 같은 QR로 참가해요' : '늦게 온 팀원도 같은 QR로 합류해요'), h('div', { class: 'qr-code' }, '방 코드 ', h('b', null, S.code)), h('div', { class: 'url' }, url))), 'qrmodal');
   }
 
   function openSettings() {
     const list = h('div', { class: 'tm-list' });
     function draw() {
       list.innerHTML = '';
-      if (!S.teams.length) list.append(h('div', { class: 'empty' }, '팀이 없어요. 폰으로 참가하거나 아래에서 미리 만들 수 있어요.'));
+      if (!S.teams.length) list.append(h('div', { class: 'empty' }, solo() ? '참가자가 없어요. 폰으로 이름을 입력하면 여기에 생겨요.' : '팀이 없어요. 폰으로 참가하거나 아래에서 미리 만들 수 있어요.'));
       S.teams.forEach((t) => {
         list.appendChild(h('div', { class: 'tm-row' },
           h('i', { style: { background: t.color } }),
           h('input', { value: t.name, maxlength: 12, onchange: (e) => { t.name = e.target.value.trim() || t.name; save(); changed(); } }),
-          h('small', null, t.bot ? '가상 팀' : `폰 ${membersOf(t.id).length}대 (접속 ${onlineCount(t.id)})`),
+          h('small', null, t.bot ? (solo() ? '가상' : '가상 팀') : solo() ? (onlineCount(t.id) ? '접속 중' : '접속 끊김') : `폰 ${membersOf(t.id).length}대 (접속 ${onlineCount(t.id)})`),
           h('button', { class: 'mini danger', onclick: () => {
-            if (!confirm(`"${t.name}" 팀을 삭제할까요?`)) return;
+            if (!confirm(`"${t.name}" ${solo() ? '참가자' : '팀'}를 삭제할까요?`)) return;
             S.teams = S.teams.filter((x) => x.id !== t.id);
             for (const c in S.members) if (S.members[c] === t.id) delete S.members[c];
             save(); draw(); changed();
@@ -601,25 +634,26 @@
     const title = h('input', { value: S.title, maxlength: 30 });
     const allow = h('input', { type: 'checkbox' }); allow.checked = S.allowNew;
     modal(h('div', { class: 'settings' },
-      h('h2', null, '⚙️ 팀 관리 · 설정'),
+      h('h2', null, `⚙️ ${WHO()} 관리 · 설정`),
       h('label', { class: 'field' }, '행사 이름', title),
-      h('label', { class: 'check' }, allow, ' 참가자가 새 팀 이름을 만들 수 있게 허용'),
-      h('h3', null, `팀 목록 (${S.teams.length}/${MAX_TEAMS})`), list,
-      h('label', { class: 'field' }, '팀 미리 만들기', pre),
+      h('div', { class: 'field' }, '진행 방식', modeSwitch()),
+      solo() ? null : h('label', { class: 'check' }, allow, ' 참가자가 새 팀 이름을 만들 수 있게 허용'),
+      h('h3', null, `${WHO()} 목록 (${S.teams.length}/${maxN()})`), list,
+      solo() ? null : h('label', { class: 'field' }, '팀 미리 만들기', pre),
       h('div', { class: 'row' },
-        h('button', { class: 'mini', onclick: () => {
+        solo() ? null : h('button', { class: 'mini', onclick: () => {
           pre.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean).forEach((n) => { if (S.teams.length < MAX_TEAMS && !S.teams.find((t) => t.name === n)) addTeam(n.slice(0, 12)); });
           pre.value = ''; draw(); changed();
         } }, '팀 추가'),
         h('button', { class: 'mini', onclick: () => {
-          const k = Number(prompt('리허설용 가상 팀을 몇 개 추가할까요? (실제 행사 전 삭제하세요)', '4'));
-          for (let i = 0; i < k && S.teams.length < MAX_TEAMS; i++) addTeam('가상' + (S.teams.filter((t) => t.bot).length + 1) + '팀', true);
+          const k = Number(prompt(`리허설용 가상 ${WHO()}을(를) 몇 개 추가할까요? (실제 행사 전 삭제하세요)`, '4'));
+          for (let i = 0; i < k && S.teams.length < maxN(); i++) addTeam('가상' + (S.teams.filter((t) => t.bot).length + 1) + (solo() ? '' : '팀'), true);
           draw(); changed();
-        } }, '🤖 리허설용 가상 팀')),
+        } }, `🤖 리허설용 가상 ${WHO()}`)),
       h('h3', null, '초기화'),
       h('div', { class: 'row' },
-        h('button', { class: 'mini', onclick: () => { if (confirm('점수 기록만 모두 지울까요? (팀은 유지)')) { S.history = []; S.teams.forEach((t) => { t.adj = 0; }); save(); closeModal(); render(); changed(); } } }, '점수만 초기화'),
-        h('button', { class: 'mini danger', onclick: () => { if (confirm('팀과 점수를 모두 지우고 새 방을 만들까요?\n참가자는 QR을 다시 찍어야 해요.')) { store.del(KEY); location.reload(); } } }, '전체 초기화 (새 방)')),
+        h('button', { class: 'mini', onclick: () => { if (confirm(`점수 기록만 모두 지울까요? (${WHO()}은(는) 유지)`)) { S.history = []; S.teams.forEach((t) => { t.adj = 0; }); save(); closeModal(); render(); changed(); } } }, '점수만 초기화'),
+        h('button', { class: 'mini danger', onclick: () => { if (confirm(`${WHO()}과(와) 점수를 모두 지우고 새 방을 만들까요?\n참가자는 QR을 다시 찍어야 해요.`)) { const keep = S.mode; store.del(KEY); store.set(KEY, { mode: keep }); location.reload(); } } }, '전체 초기화 (새 방)')),
       h('div', { class: 'row end' }, h('button', { class: 'fbtn primary', onclick: () => { S.title = title.value.trim() || S.title; S.allowNew = allow.checked; save(); closeModal(); render(); changed(); } }, '저장'))));
   }
 
@@ -685,7 +719,7 @@
 
   timer = setInterval(tick, 100);
   // 접속 폰 수 등 주기적 갱신
-  setInterval(() => { if (view === 'lobby' || view === 'menu') renderSide(); if (round && round.phase === 'intro') { const el = document.querySelector('.intro-ready'); if (el) el.textContent = `📱 준비된 폰 ${[...online.keys()].filter((c) => S.members[c]).length}대 · 팀당 평균 점수로 순위를 매겨요`; } }, 1500);
+  setInterval(() => { if (view === 'lobby' || view === 'menu') renderSide(); if (round && round.phase === 'intro') { const el = document.querySelector('.intro-ready'); if (el) el.textContent = readyText([...online.keys()].filter((c) => S.members[c]).length); } }, 1500);
   // 폰 쪽 남은 시간 보정용 주기적 브로드캐스트
   setInterval(() => { if (round && (round.phase === 'countdown' || round.phase === 'play')) broadcast(); }, 2000);
 
