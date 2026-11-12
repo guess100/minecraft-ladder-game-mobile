@@ -16,7 +16,8 @@
     .hero h1 { font-size: clamp(32px, 6vw, 60px); line-height: 1.15; margin: 16px 0 12px; letter-spacing: -.02em; }
     .hero h1 em { font-style: normal; color: var(--accent); }
     .hero p { color: var(--muted); font-size: clamp(15px, 2vw, 19px); margin: 0; }
-    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
+    .card { min-width: 0; }
     .card { display: flex; flex-direction: column; gap: 8px; background: var(--panel); border: 1.5px solid var(--line); border-radius: 22px; padding: 22px; text-decoration: none; color: inherit; transition: transform .15s, border-color .15s; }
     a.card:hover { transform: translateY(-4px); border-color: var(--accent); }
     .card .ic { font-size: 44px; }
@@ -39,7 +40,8 @@
     .tips b { color: var(--text); }
     .foot { margin-top: 48px; color: var(--muted); font-size: 13px; text-align: center; }
     .foot a { color: var(--muted); }
-    @media (max-width: 760px) { .cards, .steps, .tips { grid-template-columns: 1fr; } }
+    .foot .credit { margin-top: 14px; display: inline-block; padding: 8px 16px; border: 1px solid var(--line); border-radius: 99px; color: var(--text); font-size: 14px; font-weight: 700; }
+    @media (max-width: 760px) { .cards, .steps, .tips { grid-template-columns: minmax(0, 1fr); } }
   </style>
 </head>
 <body>
@@ -66,7 +68,7 @@
       <div class="card">
         <div class="ic">📱</div>
         <h2>참가하기</h2>
-        <p>QR을 못 찍었다면 큰 화면의 방 코드 5자리를 입력하세요.</p>
+        <p>QR을 못 찍었다면 큰 화면의 방 코드 5자리를 입력하세요. <a href="player-guide.html" style="color:var(--accent)">참가 방법 보기</a></p>
         <form class="join-row" onsubmit="event.preventDefault(); var v=this.code.value.trim().toUpperCase(); if(v) location.href='play.html?r='+encodeURIComponent(v);">
           <input name="code" maxlength="5" placeholder="코드" autocomplete="off" />
           <button>입장</button>
@@ -88,13 +90,16 @@
     <ul class="tips">
       <li><b>스페이스바 하나로 진행</b> — PPT 리모컨(다음 페이지 키)도 돼요. Q: 참가 QR 크게, F: 전체 화면</li>
       <li><b>팀마다 폰 1대 추천</b> — 그 폰으로 팀원이 돌아가며 출전하면 응원 열기가 최고예요. 최대 16팀.</li>
-      <li><b>노트북은 안정적인 인터넷</b> — 폰은 LTE·5G로도 접속돼요. 폰과 노트북이 서로 직접 연결(WebRTC)돼서 별도 서버가 필요 없어요.</li>
+      <li><b>노트북은 안정적인 인터넷</b> — 폰은 LTE·5G로도 접속돼요. 폰과 노트북은 구글 Firebase를 거쳐 연결돼요. 행사장 인터넷으로 꼭 미리 시험해 보세요.</li>
       <li><b>노트북을 새로고침해도 점수 유지</b> — 팀·점수는 이 브라우저에 자동 저장돼요. 폰은 자동으로 다시 연결돼요.</li>
       <li><b>리허설</b> — 진행 화면의 [팀 관리·설정]에서 가상 팀을 추가하면 혼자서도 전체 흐름을 미리 볼 수 있어요.</li>
       <li><b>실수해도 OK</b> — 직전 게임 결과 취소, 점수 보정(장기자랑·응원상 등) 기능이 있어요.</li>
     </ul>
 
-    <div class="foot"><a href="guide.html">📘 진행자 가이드</a> · 보너스: <a href="ladder.html">🪜 블록 사다리 탐험</a></div>
+    <div class="foot">
+      <div class="links"><a href="guide.html">📘 진행자 가이드</a> · <a href="player-guide.html">📱 참가자 가이드</a> · 보너스: <a href="ladder.html">🪜 블록 사다리 탐험</a></div>
+      <div class="credit">문의: MCA 황연모</div>
+    </div>
   </div>
   <script src="js/common.js"></script>
   <script src="js/games.js"></script>
